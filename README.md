@@ -12,59 +12,78 @@ pip install expergen
 
 ## Usage Example
 
-Here's an example of how to use ExperGen for generating machine learning experiment configurations:
+Here's an example of how to use ExperGen for generating, saving, and loading machine learning experiment configurations:
 
 ```python
-from dataclasses import dataclass
-from expergen import create_dataclass, generate_variations, save_to_json_files
-import numpy as np
-
+import expergen
 from dataclasses import dataclass, field
 
 @dataclass
-class MLExperimentConfig:
+class ModelConfig:
     model_type: str = "CNN"
+    hidden_layers: list = field(default_factory=lambda: [64, 32])
+
+@dataclass
+class TrainingConfig:
     learning_rate: float = 0.001
     batch_size: int = 64
     num_epochs: int = 100
     optimizer: str = "Adam"
+
+@dataclass
+class ExperimentConfig:
+    model: ModelConfig = field(default_factory=ModelConfig)
+    training: TrainingConfig = field(default_factory=TrainingConfig)
     dropout_rate: float = 0.3
-    hidden_layers: list = field(default_factory=lambda: [64, 32])
+    
+def main():
+    # Generate variations
+    variations = {
+        "model.hidden_layers": [[64, 32], [256, 128, 64]],
+        "training.num_epochs": [50, 100],
+    }
 
-# Define custom probability distributions
-learning_rate_dist = lambda: np.random.loguniform(1e-5, 1e-2)
-dropout_rate_dist = lambda: np.random.uniform(0.1, 0.5)
+    base_config = ExperimentConfig()
+    
+    varied_configs = expergen.generate_variations(base_config, variations)
+        
+    # Save the generated configurations to JSON files
+    expergen.save_to_json_files(
+        varied_configs,
+        destination_dir="experiment_configs/expergen/basic",
+    )
+    
+    # Load a single configuration
+    single_config = expergen.load_from_json(
+        filepath="experiment_configs/expergen/basic/instance_1.json",
+        dataclass_type=ExperimentConfig,
+    )
+    print("Single loaded configuration:")
+    print(single_config)
+    
+    # Load all configurations from the directory
+    all_configs = expergen.load_from_directory(
+        directory="experiment_configs/expergen/basic",
+        dataclass_type=ExperimentConfig,
+    )
+    print(f"\nLoaded {len(all_configs)} configurations from directory:")
+    for i, config in enumerate(all_configs, 1):
+        print(f"Configuration {i}:")
+        print(config)
+        print()
 
-# Generate random configurations
-base_config = MLExperimentConfig()
-
-# Or override some defaults:
-# base_config = MLExperimentConfig(
-#     learning_rate=learning_rate_dist(),
-#     dropout_rate=dropout_rate_dist(),
-#     batch_size=32
-# )
-
-# Generate variations
-variations = {
-    "model_type": ["CNN", "RNN", "Transformer"],
-    "batch_size": [32, 64, 128],
-    "num_epochs": range(50, 201, 50),
-    "optimizer": ["Adam", "SGD", "RMSprop"],
-    "hidden_layers": [[64, 32], [128, 64], [256, 128, 64]]
-}
-varied_configs = generate_variations(base_config, variations)
-
-# Save the generated configurations to JSON files
-save_to_json_files(
-    varied_configs,
-    directory="ml_experiments",
-    filename_prefix="exp_config",
-    filename_template="{prefix}_{index:03d}.json"
-)
+if __name__ == "__main__":
+    main()
 ```
 
-This example generates multiple machine learning experiment configurations with various hyperparameters and model architectures, and saves them as JSON files in the "ml_experiments" directory.
+This example demonstrates how to:
+1. Define nested dataclasses for structured experiment configurations
+2. Generate variations of configurations
+3. Save configurations to JSON files
+4. Load a single configuration from a JSON file
+5. Load all configurations from a directory
+
+You can run this script to see the generated and loaded configurations.
 
 For more advanced usage and customization options, please refer to the documentation.
 

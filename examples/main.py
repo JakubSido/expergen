@@ -1,23 +1,61 @@
-from expergen import create_dataclass, generate_variations, save_to_json_files
+import expergen
+import numpy as np
+from dataclasses import dataclass, field
 
-# Example usage
+
+@dataclass
+class ModelConfig:
+    model_type: str = "CNN"
+    hidden_layers: list = field(default_factory=lambda: [64, 32])
+
+@dataclass
+class TrainingConfig:
+    learning_rate: float = 0.001
+    batch_size: int = 64
+    num_epochs: int = 100
+    optimizer: str = "Adam"
+
+@dataclass
+class ExperimentConfig:
+    model: ModelConfig = field(default_factory=ModelConfig)
+    training: TrainingConfig = field(default_factory=TrainingConfig)
+    dropout_rate: float = 0.3
+    
+def main():
+    # Generate variations
+    variations = {
+        "model.hidden_layers": [[64, 32], [256, 128, 64]],
+        "training.num_epochs": [50, 100],
+    }
+
+    base_config = ExperimentConfig()
+    
+    varied_configs = expergen.generate_variations(base_config, variations)
+        
+    # Save the generated configurations to JSON files
+    expergen.save_to_json_files(
+        varied_configs,
+        destination_dir="experiment_configs/expergen/basic",
+    )
+    
+    # Load a single configuration
+    single_config = expergen.load_from_json(
+        filepath="experiment_configs/expergen/basic/instance_1.json",
+        dataclass_type=ExperimentConfig,
+    )
+    print("Single loaded configuration:")
+    print(single_config)
+    
+    # Load all configurations from the directory
+    all_configs = expergen.load_from_directory(
+        directory="experiment_configs/expergen/basic",
+        dataclass_type=ExperimentConfig,
+    )
+    print(f"\nLoaded {len(all_configs)} configurations from directory:")
+    for i, config in enumerate(all_configs, 1):
+        print(f"Configuration {i}:")
+        print(config)
+        print()
+
 if __name__ == "__main__":
-    field_definitions = {
-        "param1": int,
-        "param2": str,
-        "param3": float
-    }
-    DynamicDataClass = create_dataclass("DynamicData", field_definitions)
-
-    original_instance = DynamicDataClass(param1=10, param2="A", param3=3.14)
-
-    variation_params = {
-        "param1": [10, 20, 30],
-        "param2": ["A", "B"],
-        "param3": [3.14, 2.71]
-    }
-
-    variations = generate_variations(original_instance, variation_params)
-
-    # Save variations to individual JSON files
-    save_to_json_files(variations, "output_directory")
+    main()
