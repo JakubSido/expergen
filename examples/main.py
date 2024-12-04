@@ -1,24 +1,30 @@
 import expergen
-import numpy as np
+import pydantic.dataclasses 
 from dataclasses import dataclass, field
 
-
-@dataclass
+@pydantic.dataclasses.dataclass
 class ModelConfig:
     model_type: str = "CNN"
     hidden_layers: list = field(default_factory=lambda: [64, 32])
 
 @dataclass
-class TrainingConfig:
+class BaseTrainingConfig:
     learning_rate: float = 0.001
     batch_size: int = 64
     num_epochs: int = 100
     optimizer: str = "Adam"
 
-@dataclass
+@pydantic.dataclasses.dataclass
+class TrainingConfig(BaseTrainingConfig):
+    learning_rate: float = 0.001
+    num_epochs: int = 100
+    optimizer: str = "SGD"
+    smart_feature: str = "xyz"
+    
+@pydantic.dataclasses.dataclass
 class ExperimentConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
-    training: TrainingConfig = field(default_factory=TrainingConfig)
+    training: TrainingConfig = field(default_factory=TrainingConfig) 
     dropout_rate: float = 0.3
     
 def main():
@@ -27,7 +33,6 @@ def main():
         "model.hidden_layers": [[64, 32], [256, 128, 64]],
         "training.num_epochs": [50, 100],
     }
-
     base_config = ExperimentConfig()
     
     varied_configs = expergen.generate_variations(base_config, variations)
