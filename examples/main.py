@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 @pydantic.dataclasses.dataclass
 class ModelConfig:
     model_type: str = "CNN"
-    hidden_layers: list = field(default_factory=lambda: [64, 32])
+    hidden_layers: list[int] = field(default_factory=lambda: [64, 32])
 
 @dataclass
 class BaseTrainingConfig:
@@ -14,15 +14,15 @@ class BaseTrainingConfig:
     num_epochs: int = 100
     optimizer: str = "Adam"
 
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass 
 class TrainingConfig(BaseTrainingConfig):
     learning_rate: float = 0.001
     num_epochs: int = 100
     optimizer: str = "SGD"
     smart_feature: str = "xyz"
-    
-@pydantic.dataclasses.dataclass
-class ExperimentConfig:
+
+@pydantic.dataclasses.dataclass 
+class ExperimentConfig():
     model: ModelConfig = field(default_factory=ModelConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig) 
     dropout_rate: float = 0.3
@@ -30,7 +30,7 @@ class ExperimentConfig:
 def main():
     # Generate variations
     variations = {
-        "model.hidden_layers": [[64, 32], [256, 128, 64]],
+        "model.hidden_layers": [["64s", 32], [256, 128, 64]],
         "training.num_epochs": [50, 100],
     }
     base_config = ExperimentConfig()
@@ -45,16 +45,16 @@ def main():
     
     # Load a single configuration
     single_config = expergen.load_from_json(
+        model_type = ExperimentConfig ,
         filepath="experiment_configs/expergen/basic/instance_1.json",
-        dataclass_type=ExperimentConfig,
     )
     print("Single loaded configuration:")
     print(single_config)
     
     # Load all configurations from the directory
     all_configs = expergen.load_from_directory(
+        model_type = ExperimentConfig,
         directory="experiment_configs/expergen/basic",
-        dataclass_type=ExperimentConfig,
     )
     print(f"\nLoaded {len(all_configs)} configurations from directory:")
     for i, config in enumerate(all_configs, 1):
