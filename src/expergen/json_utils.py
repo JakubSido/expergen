@@ -3,13 +3,16 @@ import json
 from typing import List, Type, TypeVar, Union, Any
 from pydantic import BaseModel
 from dataclasses import asdict, is_dataclass
-from dacite import from_dict, Config
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 
-T = TypeVar('T', bound=Union[BaseModel, object])
+T = TypeVar('T', bound=BaseModel)
 
 def is_pydantic_model(obj: Any) -> bool:
     return (isinstance(obj, type) and issubclass(obj, BaseModel)) or \
            (hasattr(obj, '__class__') and issubclass(obj.__class__, BaseModel))
+
+def is_pydantic_dataclass(obj: Any) -> bool:
+    return hasattr(obj, '__pydantic_model__')
 
 def load_from_directory(directory: str, model_type: Type[T]) -> List[T]:
     """
@@ -28,7 +31,7 @@ def load_from_directory(directory: str, model_type: Type[T]) -> List[T]:
     return instances
 
 
-def save_to_json_files(instances: List[T], destination_dir: str) -> None:
+def save_to_directory(instances: List[T], destination_dir: str) -> None:
     """
     Save each instance as a separate JSON file in the specified directory.
     Supports both Pydantic models and regular dataclasses.
@@ -45,7 +48,7 @@ def save_to_json_files(instances: List[T], destination_dir: str) -> None:
                 f.write(json_data)
         elif is_dataclass(instance):
             with open(filepath, 'w') as f:
-                json.dump(asdict(instance), f, indent=4)
+                json.dump(instance.model_dump(), f, indent=4)
         else:
             raise TypeError(f"Instance {index} is neither a Pydantic model nor a dataclass")
     print(f"Saved {len(instances)} files to '{destination_dir}'.")
@@ -60,12 +63,13 @@ def load_from_json(filepath: str, model_type: Type[T]) -> T:
     :return: Instance of the specified type.
     """
     with open(filepath, 'r') as f:
-        json_data = f.read()
+        json_data = json.load(f)
     
     if is_pydantic_model(model_type):
-        return model_type.model_validate_json(json_data)
+        return model_type.model_validate(json_data)
+    elif is_pydantic_dataclass(model_type):
+        return model_type(**json_data)
     elif is_dataclass(model_type):
-        data = json.loads(json_data)
-        return from_dict(data_class=model_type, data=data, config=Config(check_types=True))
+        return pydantic_dataclass(model_type)(**json_data)
     else:
-        raise TypeError(f"{model_type} is neither a Pydantic model nor a dataclass")
+        raise TypeError(f"{model_type} is neither a Pydantic model, Pydantic dataclass, nor a regular dataclass")

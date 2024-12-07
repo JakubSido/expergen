@@ -1,13 +1,9 @@
 import pytest
 from dataclasses import dataclass
 from typing import List
-from expergen.dataclass_utils import create_dataclass, generate_variations
+from expergen.dataclass_utils import generate_variations
 
-def test_create_dataclass():
-    TestClass = create_dataclass("TestClass", {"field1": int, "field2": str})
-    instance = TestClass(field1=1, field2="test")
-    assert instance.field1 == 1
-    assert instance.field2 == "test"
+
 
 @dataclass
 class NestedClass:

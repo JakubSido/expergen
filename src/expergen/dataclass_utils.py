@@ -1,19 +1,7 @@
 from dataclasses import asdict, fields, make_dataclass, is_dataclass
 from itertools import product
 from typing import List, Dict, Any, Iterable, Type, Callable, Union, get_type_hints
-
-
-def create_dataclass(name: str, field_definitions: Dict[str, type]) -> Type:
-    """
-    Dynamically create a dataclass.
-
-    :param name: Name of the dataclass.
-    :param field_definitions: Dictionary with field names as keys and types as values.
-    :return: Dataclass type.
-    """
-    return make_dataclass(name, [(key, value) for key, value in field_definitions.items()])
-
-
+from pydantic import BaseModel
 import copy
 
 def generate_variations(instance: Any, variations: Dict[str, Union[Iterable, Dict[str, Iterable]]], transformations: Dict[str, Union[Callable, Dict[str, Callable]]] = None) -> List[Any]:
@@ -55,30 +43,35 @@ def generate_variations(instance: Any, variations: Dict[str, Union[Iterable, Dic
             if part not in current_type_hints:
                 raise ValueError(f"Field '{part}' not found in {type(current_obj).__name__}")
             
+            
             expected_type = current_type_hints[part]
-            if is_dataclass(current_obj):
+            # TODO handle BaseModels from pydantic
+            if is_pydantic_base_model(current_obj):
+                current_obj = getattr(current_obj, part)
+                current_type_hints = get_type_hints(type(current_obj))
+            elif is_dataclass(current_obj):
                 current_obj = getattr(current_obj, part)
                 current_type_hints = get_type_hints(type(current_obj))
             else:
                 break
         
         def check_nested_type(value, expected_type):
-            if hasattr(expected_type, '__origin__'):
+            if hasattr(expected_type, '__origin__'):  # For generic types like List, Dict, etc.
                 if expected_type.__origin__ is Union:
                     return any(check_nested_type(value, t) for t in expected_type.__args__)
-                elif expected_type.__origin__ is list:
-                    if not isinstance(value, list):
-                        return False
-                    return all(check_nested_type(item, expected_type.__args__[0]) for item in value)
-                else:
-                    return isinstance(value, expected_type.__origin__)
+                if expected_type.__origin__ is list:
+                    return isinstance(value, list) and all(check_nested_type(v, expected_type.__args__[0]) for v in value)
+                if expected_type.__origin__ is dict:
+                    return isinstance(value, dict) and all(check_nested_type(k, expected_type.__args__[0]) and check_nested_type(v, expected_type.__args__[1]) for k, v in value.items())
+            elif is_dataclass(expected_type) or (isinstance(expected_type, type) and issubclass(expected_type, BaseModel)):
+                return isinstance(value, expected_type)
             else:
                 return isinstance(value, expected_type)
+    
+    
 
         if not check_nested_type(value, expected_type):
-            raise TypeError(f"Expected type {expected_type} for field '{field_path}', but got {type(value)}")
-
-    base_values = asdict(instance)
+            raise TypeError(f"Expected type {expected_type} for field '{field_path}', but got {type(value).__name__}")
     keys, iterables = zip(*variations.items()) if variations else ([], [])
     combinations = list(product(*iterables)) if iterables else [()]
 
@@ -102,3 +95,11 @@ def generate_variations(instance: Any, variations: Dict[str, Union[Iterable, Dic
     return results
 
 # This function is no longer needed with the new implementation
+def is_pydantic_base_model(obj: Any) -> bool:
+    """
+    Check if an object is an instance of pydantic.BaseModel.
+
+    :param obj: The object to check.
+    :return: True if the object is an instance of pydantic.BaseModel, False otherwise.
+    """
+    return isinstance(obj, BaseModel) or (isinstance(obj, type) and issubclass(obj, BaseModel))
