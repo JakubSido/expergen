@@ -31,7 +31,7 @@ def load_from_directory(directory: str, model_type: Type[T]) -> List[T]:
     return instances
 
 
-def save_to_directory(instances: List[T], destination_dir: str) -> None:
+def save_to_directory(instances: List[T], destination_dir: str, exclude_defaults = True) -> None:
     """
     Save each instance as a separate JSON file in the specified directory.
     Supports both Pydantic models and regular dataclasses.
@@ -43,12 +43,12 @@ def save_to_directory(instances: List[T], destination_dir: str) -> None:
     for index, instance in enumerate(instances, start=1):
         filepath = os.path.join(destination_dir, f"instance_{index}.json")
         if is_pydantic_model(instance):
-            json_data = instance.model_dump_json(indent=4)
+            json_data = instance.model_dump_json(indent=4, exclude_defaults=exclude_defaults)
             with open(filepath, 'w') as f:
                 f.write(json_data)
         elif is_dataclass(instance):
             with open(filepath, 'w') as f:
-                json.dump(instance.model_dump(), f, indent=4)
+                json.dump(instance.model_dump(exclude_defaults=exclude_defaults), f, indent=4)
         else:
             raise TypeError(f"Instance {index} is neither a Pydantic model nor a dataclass")
     print(f"Saved {len(instances)} files to '{destination_dir}'.")

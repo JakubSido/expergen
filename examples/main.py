@@ -53,6 +53,8 @@ def main():
     varied_configs = expergen.generate_variations(base_config, variations)
     
     print(varied_configs)
+    
+    expergen.save_to_directory(varied_configs, destination_dir="experiment_configs/expergen/variations")
         
     # save_to_directory() 
     # load_from_json()
